@@ -1,7 +1,7 @@
 from django.urls import path
-from .views import cargar_municipios, index
+from . import views
 
 urlpatterns = [
-    path('', index, name='index'),
-    path('ajax/cargar-municipios/', cargar_municipios, name='ajax_cargar_municipios'),
+    path('', views.index, name='index'), 
+    path('cargar-municipios/', views.cargar_municipios, name='cargar_municipios'),
 ]
