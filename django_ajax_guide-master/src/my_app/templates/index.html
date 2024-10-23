@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 <div class="container-fluid">
     <form id="friend-form">
         <div class="row">
@@ -13,12 +12,11 @@
             </div>
             {% endfor %}
             
-            <div class="col text-center">
+            <div class = "col text-center">
                 <input type="submit" class="btn btn-primary" value="Create Friend" />
             </div>
-
         </div>
-    <form>
+    </form>
 </div>
 
 <hr />
@@ -48,65 +46,77 @@
         {% endfor %}
         </tbody>
     </table>
-
 </div>
 {% endblock content %}
 
+
 {% block javascript %}
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        document.getElementById("friend-form").addEventListener("submit", function (e) {
-            e.preventDefault();
-            
-            const form = this;
-            const formData = new FormData(form);
-            
-            fetch("{% url 'post_friend' %}", {
+    document.querySelector("#friend-form").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+    
+        try {
+            const response = await fetch("{% url 'post_friend' %}", {
                 method: 'POST',
+                body: formData,
                 headers: {
-                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
-                },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                form.reset();
-                document.getElementById("id_nick_name").focus();
-
-                const instance = JSON.parse(data["instance"]);
-                const fields = instance[0]["fields"];
-                const newRow = `
-                    <tr>
-                        <td>${fields["nick_name"] || ""}</td>
-                        <td>${fields["first_name"] || ""}</td>
-                        <td>${fields["last_name"] || ""}</td>
-                        <td>${fields["likes"] || ""}</td>
-                        <td>${fields["dob"] || ""}</td>
-                        <td>${fields["lives_in"] || ""}</td>
-                    </tr>`;
-                document.querySelector("#my_friends tbody").insertAdjacentHTML('afterbegin', newRow);
-            })
-            .catch(error => {
-                alert("Error: " + error);
-            });
-        });
-
-        document.getElementById("id_nick_name").addEventListener("focusout", function (e) {
-            const nick_name = this.value;
-
-            fetch("{% url 'validate_nickname' %}?nick_name=" + nick_name)
-            .then(response => response.json())
-            .then(data => {
-                if (!data["valid"]) {
-                    alert("You cannot create a friend with the same nickname");
-                    this.value = "";
-                    this.focus();
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
-            })
-            .catch(error => {
-                console.log("Error:", error);
             });
-        });
+            const data = await response.json();
+    
+            if (data.instance) {
+                // Limpiar el formulario y agregar el nuevo amigo a la tabla
+                this.reset();
+                const instance = JSON.parse(data.instance);
+                const fields = instance[0].fields;
+                document.querySelector("#my_friends tbody").insertAdjacentHTML('afterbegin', `
+                    <tr>
+                        <td>${fields.nick_name || ""}</td>
+                        <td>${fields.first_name || ""}</td>
+                        <td>${fields.last_name || ""}</td>
+                        <td>${fields.likes || ""}</td>
+                        <td>${fields.dob || ""}</td>
+                        <td>${fields.lives_in || ""}</td>
+                    </tr>
+                `);
+            } else {
+                alert(data.error);
+            }
+        } catch (error) {
+            alert('An error ocurred');
+            console.log('Error:', error);
+        }
+    });
+
+    document.querySelector("#id_nick_name").addEventListener("focusout", async function (e) {
+        e.preventDefault();
+        
+        const nick_name = this.value;
+
+        if (nick_name.trim() === "") {
+            return;
+        }
+
+        try {
+            const response = await fetch("{% url 'validate_nickname' %}?nick_name=" + encodeURIComponent(nick_name), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            const data = await response.json();
+
+            if (!data.valid) {
+                alert("You cannot create a friend with the same nickname");
+                this.value = "";
+                this.focus();
+            }
+        } catch (error) {
+            console.log('Error:', error);
+        }
     });
 </script>
 {% endblock javascript %}
